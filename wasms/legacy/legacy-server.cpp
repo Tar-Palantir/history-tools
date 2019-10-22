@@ -242,6 +242,22 @@ STRUCT_REFLECT(get_producer_schedule_result) {
     STRUCT_MEMBER(get_producer_schedule_result, total_producer_weight);
 }
 
+struct get_transaction_result {
+    eosio::checksum256             id                      = {};
+    eosio::block_timestamp  block_time              = eosio::block_timestamp{};;
+    uint32_t                block_num               = 0;
+    uint32_t                last_irreversible_block = 0;
+    eosio::action_trace     trx_trace               = {};
+};
+
+STRUCT_REFLECT(get_transaction_result) {
+    STRUCT_MEMBER(get_transaction_result, id);
+    STRUCT_MEMBER(get_transaction_result, block_time);
+    STRUCT_MEMBER(get_transaction_result, block_num);
+    STRUCT_MEMBER(get_transaction_result, last_irreversible_block);
+    STRUCT_MEMBER(get_transaction_result, trx_trace);
+}
+
 template <int size>
 bool starts_with(std::string_view s, const char (&prefix)[size]) {
     if (s.size() < size)
@@ -568,23 +584,42 @@ void get_transaction(std::string_view request, const eosio::database_status& /*s
             {
                 .transaction_id = params.id,
                 .block_num      = std::numeric_limits<uint32_t>::min(),
-                .action_ordinal = std::numeric_limits<uint32_t>::min(),
+                .action_ordinal = 1,
             },
         .last =
             {
                 .transaction_id = params.id,
                 .block_num      = std::numeric_limits<uint32_t>::max(),
-                .action_ordinal = std::numeric_limits<uint32_t>::max(),
+                .action_ordinal = 1,
             },
         .max_results = 1,
     });
 
-    std::string result;
+    get_transaction_result result;
     eosio::for_each_query_result<eosio::action_trace>(s, [&](eosio::action_trace& r) {
-        result += to_json(r).sv();
+        result.trx_trace = r;
         return true;
     });
-    eosio::set_output_data(result);
+
+    if(result.trx_trace.block_num == 0) return;
+
+    result.id = result.trx_trace.transaction_id;
+    result.block_num = result.trx_trace.block_num;
+
+    auto status = eosio::get_database_status();
+    result.last_irreversible_block = status.irreversible;
+
+    auto bs = query_database(eosio::query_block_info_range_index{
+            .first       = result.block_num,
+            .last        = result.block_num,
+            .max_results = 1,
+    });
+    eosio::for_each_query_result<eosio::block_info>(bs, [&](eosio::block_info& b) {
+        result.block_time = b.timestamp;
+        return true;
+    });
+
+    eosio::set_output_data(eosio::to_json(result).sv());
 }
 
 void get_actions(std::string_view request, const eosio::database_status& /*status*/) {

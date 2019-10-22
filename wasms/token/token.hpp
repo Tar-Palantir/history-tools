@@ -23,13 +23,14 @@ STRUCT_REFLECT(token_transfer_key) {
 }
 
 struct token_transfer {
-    token_transfer_key                     key      = {};
-    eosio::name                            from     = {};
-    eosio::name                            to       = {};
-    eosio::extended_asset                  quantity = {};
-    eosio::shared_memory<std::string_view> memo     = {};
+    token_transfer_key                     key       = {};
+    eosio::name                            from      = {};
+    eosio::name                            to        = {};
+    eosio::extended_asset                  quantity  = {};
+    eosio::shared_memory<std::string_view> memo      = {};
+    eosio::block_timestamp                 timestamp = eosio::block_timestamp{};
 
-    EOSLIB_SERIALIZE(token_transfer, (key)(from)(to)(quantity)(memo))
+    EOSLIB_SERIALIZE(token_transfer, (key)(from)(to)(quantity)(memo)(timestamp))
 };
 
 STRUCT_REFLECT(token_transfer) {
@@ -38,6 +39,7 @@ STRUCT_REFLECT(token_transfer) {
     STRUCT_MEMBER(token_transfer, to)
     STRUCT_MEMBER(token_transfer, quantity)
     STRUCT_MEMBER(token_transfer, memo)
+    STRUCT_MEMBER(token_transfer, timestamp)
 }
 
 // todo: version

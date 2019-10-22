@@ -37,8 +37,9 @@ void process(token_transfer_request& req, const eosio::database_status& status) 
         .max_results = req.max_results,
     });
 
-    token_transfer_response        response;
-    std::optional<query_type::key> last_key;
+    token_transfer_response                 response;
+    std::optional<query_type::key>          last_key;
+    std::map<uint32_t, eosio::block_info>   block_map;
     eosio::for_each_query_result<eosio::action_trace>(s, [&](eosio::action_trace& at) {
         last_key = query_type::key::from_data(at);
         if (at.transaction_status != eosio::transaction_status::executed)
@@ -51,6 +52,20 @@ void process(token_transfer_request& req, const eosio::database_status& status) 
         if ((req.include_notify_incoming && is_notify && at.receiver == unpacked.to) ||
             (req.include_notify_outgoing && is_notify && at.receiver == unpacked.from) || //
             (req.include_nonnotify && !is_notify)) {
+
+            auto block_itr = block_map.find(at.block_num);
+            if(block_itr == block_map.end())
+            {
+                auto bs = query_database(eosio::query_block_info_range_index{
+                        .first       = get_block_num(eosio::make_absolute_block(at.block_num), status),
+                        .last        = get_block_num(eosio::make_absolute_block(at.block_num), status),
+                        .max_results = 1,
+                });
+                eosio::for_each_query_result<eosio::block_info>(bs, [&](eosio::block_info& b) {
+                    block_itr = block_map.insert(std::pair<uint32_t, eosio::block_info>{at.block_num, b}).first;
+                    return true;
+                });
+            }
 
             response.transfers.push_back(token_transfer{
                 .key =
@@ -65,6 +80,7 @@ void process(token_transfer_request& req, const eosio::database_status& status) 
                 .to       = unpacked.to,
                 .quantity = eosio::extended_asset{unpacked.quantity, at.action.account},
                 .memo     = unpacked.memo,
+                .timestamp = block_itr->second.timestamp
             });
         }
         return true;
