@@ -601,7 +601,10 @@ void get_transaction(std::string_view request, const eosio::database_status& /*s
         return true;
     });
 
-    if(result.trx_trace.block_num == 0) return;
+    if(result.trx_trace.block_num == 0) {
+        eosio::set_output_data(std::string(""));
+        return;
+    }
 
     result.id = result.trx_trace.transaction_id;
     result.block_num = result.trx_trace.block_num;
