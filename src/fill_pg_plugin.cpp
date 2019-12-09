@@ -720,8 +720,8 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         for (uint32_t i = 0; i < num; ++i) {
             transaction_trace trace;
             bin_to_native(trace, bin);
-            if (filter(config->trx_filters, std::get<0>(trace)))
-                write_transaction_trace(block_num, num_ordinals, std::get<transaction_trace_v0>(trace), bulk, t, pipeline);
+//            if (filter(config->trx_filters, std::get<0>(trace)))
+            write_transaction_trace(block_num, num_ordinals, std::get<transaction_trace_v0>(trace), bulk, t, pipeline);
         }
     }
 
@@ -729,8 +729,8 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
         uint32_t block_num, uint32_t& num_ordinals, transaction_trace_v0& ttrace, bool bulk, pqxx::work& t, pqxx::pipeline& pipeline) {
         auto* failed = !ttrace.failed_dtrx_trace.empty() ? &std::get<transaction_trace_v0>(ttrace.failed_dtrx_trace[0].recurse) : nullptr;
         if (failed) {
-            if (!filter(config->trx_filters, *failed))
-                return;
+//            if (!filter(config->trx_filters, *failed))
+//                return;
             write_transaction_trace(block_num, num_ordinals, *failed, bulk, t, pipeline);
         }
         auto        transaction_ordinal = ++num_ordinals;
@@ -769,19 +769,21 @@ struct fpg_session : connection_callbacks, std::enable_shared_from_this<fpg_sess
     void write_action_trace(
         uint32_t block_num, transaction_trace_v0& ttrace, action_trace_v0& atrace, bool bulk, pqxx::work& t, pqxx::pipeline& pipeline) {
 
+        if (!filter(config->trx_filters, ttrace, atrace))
+          return;
         std::string fields = "block_num, transaction_id, transaction_status";
         std::string values =
             std::to_string(block_num) + sep(bulk) + quote(bulk, (std::string)ttrace.id) + sep(bulk) + quote(bulk, to_string(ttrace.status));
 
         write("action_trace", block_num, atrace, fields, values, bulk, t, pipeline);
-        write_action_trace_subtable(
-            "action_trace_authorization", block_num, ttrace, atrace.action_ordinal.value, atrace.act.authorization, bulk, t, pipeline);
-        if (atrace.receipt)
-            write_action_trace_subtable(
-                "action_trace_auth_sequence", block_num, ttrace, atrace.action_ordinal.value,
-                std::get<action_receipt_v0>(*atrace.receipt).auth_sequence, bulk, t, pipeline);
-        write_action_trace_subtable(
-            "action_trace_ram_delta", block_num, ttrace, atrace.action_ordinal.value, atrace.account_ram_deltas, bulk, t, pipeline);
+//        write_action_trace_subtable(
+//            "action_trace_authorization", block_num, ttrace, atrace.action_ordinal.value, atrace.act.authorization, bulk, t, pipeline);
+//        if (atrace.receipt)
+//            write_action_trace_subtable(
+//                "action_trace_auth_sequence", block_num, ttrace, atrace.action_ordinal.value,
+//                std::get<action_receipt_v0>(*atrace.receipt).auth_sequence, bulk, t, pipeline);
+//        write_action_trace_subtable(
+//            "action_trace_ram_delta", block_num, ttrace, atrace.action_ordinal.value, atrace.account_ram_deltas, bulk, t, pipeline);
     } // write_action_trace
 
     template <typename T>
